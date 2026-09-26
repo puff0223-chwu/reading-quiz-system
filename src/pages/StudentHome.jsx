@@ -60,6 +60,8 @@ export default function StudentHome() {
           </div>
         </div>
       </div>
+
+      <p className="home-footer">© {new Date().getFullYear()} 巫魚子老師 科普閱讀測驗系統</p>
     </div>
   )
 }
