@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useSettings } from '../lib/settings.jsx'
 
 const STUDENT_INFO_KEY = 'reading-quiz-student-info'
 
@@ -19,6 +20,9 @@ function loadStudentInfo() {
 export default function AssignmentPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { settings } = useSettings()
+  const bgStyle = settings.bg_image_url ? { backgroundImage: `url("${settings.bg_image_url}")` } : undefined
+  const bgClass = settings.bg_image_url ? 'home-bg' : ''
   const [studentInfo, setStudentInfo] = useState(loadStudentInfo())
   const [questions, setQuestions] = useState(null)
   const [activeId, setActiveId] = useState(null)
@@ -143,9 +147,11 @@ export default function AssignmentPage() {
 
   if (loadError) {
     return (
-      <div className="page">
-        <div className="paper section">
-          <p className="error-text">{loadError}</p>
+      <div className={`page-bg ${bgClass}`} style={bgStyle}>
+        <div className="page">
+          <div className="paper section">
+            <p className="error-text">{loadError}</p>
+          </div>
         </div>
       </div>
     )
@@ -153,6 +159,7 @@ export default function AssignmentPage() {
 
   if (!studentInfo) {
     return (
+      <div className={`page-bg ${bgClass}`} style={bgStyle}>
       <div className="page">
         <div className="paper">
           <div className="masthead" style={{ position: 'relative' }}>
@@ -197,6 +204,7 @@ export default function AssignmentPage() {
           </form>
         </div>
       </div>
+      </div>
     )
   }
 
@@ -204,6 +212,7 @@ export default function AssignmentPage() {
   const activeStatus = statusMap[activeId]
 
   return (
+    <div className={`page-bg ${bgClass}`} style={bgStyle}>
     <div className="page">
       <div className="paper">
         <div className="masthead" style={{ paddingBottom: 16, position: 'relative' }}>
@@ -281,6 +290,7 @@ export default function AssignmentPage() {
           </div>
         )}
       </div>
+    </div>
     </div>
   )
 }

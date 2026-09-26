@@ -255,6 +255,7 @@ a { color: var(--accent); }
   background: linear-gradient(180deg, rgba(250, 246, 238, 0.55), var(--paper-dark) 88%);
 }
 .home-bg > * { position: relative; z-index: 1; }
+.page-bg { min-height: 100vh; }
 
 .error-text { color: var(--danger); font-size: 0.9rem; margin-top: 8px; }
 .muted { color: var(--ink-soft); }

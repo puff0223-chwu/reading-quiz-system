@@ -5,6 +5,7 @@ import { supabase } from '../../supabaseClient.js'
 export default function ImportPage() {
   const [assignments, setAssignments] = useState([])
   const [targetAssignment, setTargetAssignment] = useState('')
+  const [fileName, setFileName] = useState('')
   const [rows, setRows] = useState([])
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
@@ -17,6 +18,9 @@ export default function ImportPage() {
   function handleFile(e) {
     const file = e.target.files[0]
     if (!file) return
+    setFileName(file.name)
+    setResult('')
+    setError('')
     const reader = new FileReader()
     reader.onload = (evt) => {
       const wb = XLSX.read(evt.target.result, { type: 'binary' })
@@ -60,22 +64,26 @@ export default function ImportPage() {
       <p className="muted">
         請將舊系統匯出的 Excel/CSV 整理成以下欄位（欄位名稱需完全一致）：
         <br />
-        <code>題目, 用途, 年級, 班級, 座號, 姓名, 嘗試次數, 作答內容, 是否過關, AI回饋</code>
+        <code>題目, 用途, 年級, 班級, 座號, 姓名, 嘗試次數, 作答內容, 是否過關, 老師回饋</code>
       </p>
-      <div className="field">
-        <label>匯入到哪份作業</label>
-        <select value={targetAssignment} onChange={(e) => setTargetAssignment(e.target.value)}>
-          <option value="">請選擇</option>
-          {assignments.map((a) => (
-            <option key={a.id} value={a.id}>{a.title}</option>
-          ))}
-        </select>
+
+      <div className="filter-grid">
+        <div className="field">
+          <label>匯入到哪份作業</label>
+          <select value={targetAssignment} onChange={(e) => setTargetAssignment(e.target.value)}>
+            <option value="">請選擇</option>
+            {assignments.map((a) => (
+              <option key={a.id} value={a.id}>{a.title}</option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label>選擇檔案（.xlsx / .xls / .csv）</label>
+          <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} />
+        </div>
       </div>
-      <div className="field">
-        <label>選擇檔案（.xlsx / .xls / .csv）</label>
-        <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} />
-      </div>
-      {rows.length > 0 && <p className="muted">已讀取 {rows.length} 筆資料，確認無誤後按下方按鈕匯入。</p>}
+
+      {fileName && rows.length > 0 && <p className="muted">已讀取「{fileName}」，共 {rows.length} 筆資料，確認無誤後按下方按鈕匯入。</p>}
       {error && <p className="error-text">{error}</p>}
       {result && <p style={{ color: 'var(--pass)' }}>{result}</p>}
       <button onClick={runImport} disabled={importing}>{importing ? '匯入中...' : '開始匯入'}</button>

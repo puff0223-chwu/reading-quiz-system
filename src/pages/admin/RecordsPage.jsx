@@ -10,7 +10,6 @@ export default function RecordsPage() {
   const [loading, setLoading] = useState(true)
 
   const [filterAssignment, setFilterAssignment] = useState('')
-  const [filterQuestion, setFilterQuestion] = useState('')
   const [filterPurpose, setFilterPurpose] = useState('')
   const [filterGrade, setFilterGrade] = useState('')
   const [filterClass, setFilterClass] = useState('')
@@ -49,10 +48,7 @@ export default function RecordsPage() {
     setLoading(false)
   }
 
-  const questionOptions = [...new Map(records.map((r) => [r.questions?.title, r.questions?.title])).keys()].filter(Boolean)
-
   const filtered = records.filter((r) => {
-    if (filterQuestion && r.questions?.title !== filterQuestion) return false
     if (filterPurpose && r.purpose !== filterPurpose) return false
     if (filterGrade && r.grade !== filterGrade) return false
     if (filterClass && !r.class_name?.includes(filterClass)) return false
@@ -64,7 +60,6 @@ export default function RecordsPage() {
 
   function resetFilters() {
     setFilterAssignment('')
-    setFilterQuestion('')
     setFilterPurpose('')
     setFilterGrade('')
     setFilterClass('')
@@ -168,15 +163,6 @@ export default function RecordsPage() {
             <option value="">所有作業</option>
             {assignments.map((a) => (
               <option key={a.id} value={a.id}>{a.title}</option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label>題目</label>
-          <select value={filterQuestion} onChange={(e) => setFilterQuestion(e.target.value)}>
-            <option value="">所有題目</option>
-            {questionOptions.map((t) => (
-              <option key={t} value={t}>{t}</option>
             ))}
           </select>
         </div>
