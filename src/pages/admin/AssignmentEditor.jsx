@@ -8,6 +8,7 @@ export default function AssignmentEditor() {
   const [questions, setQuestions] = useState([])
   const [saving, setSaving] = useState(false)
   const [summarizing, setSummarizing] = useState(false)
+  const [generatingQuestions, setGeneratingQuestions] = useState(false)
   const [error, setError] = useState('')
   const [savedNote, setSavedNote] = useState('')
 
@@ -73,6 +74,41 @@ export default function AssignmentEditor() {
       setError('自動生成摘要失敗，請確認網址是否正確，或直接手動輸入摘要。')
     } finally {
       setSummarizing(false)
+    }
+  }
+
+  async function generateQuestions() {
+    if (!assignment.article_context?.trim()) {
+      setError('請先填寫或自動生成文章摘要，AI 才有依據可以出題')
+      return
+    }
+    const countStr = prompt('要請 AI 出幾題草稿？（1-8 題，之後都可以再自己增刪修改）', '4')
+    if (!countStr) return
+    setGeneratingQuestions(true)
+    setError('')
+    try {
+      const res = await fetch('/api/generate-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ article_context: assignment.article_context, count: countStr }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'AI 出題失敗')
+
+      const toInsert = data.questions.map((q, idx) => ({
+        assignment_id: id,
+        order_index: questions.length + idx,
+        title: q.title || `第 ${questions.length + idx + 1} 題`,
+        prompt: q.prompt || '',
+        criteria: q.criteria || '',
+      }))
+      const { data: inserted, error: insertErr } = await supabase.from('questions').insert(toInsert).select()
+      if (insertErr) throw insertErr
+      setQuestions([...questions, ...inserted])
+    } catch (err) {
+      setError(err.message || 'AI 出題失敗，請稍後再試一次。')
+    } finally {
+      setGeneratingQuestions(false)
     }
   }
 
@@ -168,8 +204,16 @@ export default function AssignmentEditor() {
       <div className="paper section" style={{ marginTop: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ margin: 0 }}>題目（{questions.length}）</h2>
-          <button onClick={addQuestion}>+ 新增題目</button>
+          <div>
+            <button className="secondary" onClick={generateQuestions} disabled={generatingQuestions}>
+              {generatingQuestions ? 'AI 出題中...' : '🪄 AI 幫我出題'}
+            </button>{' '}
+            <button onClick={addQuestion}>+ 手動新增題目</button>
+          </div>
         </div>
+        <p className="muted" style={{ marginTop: -8, marginBottom: 18 }}>
+          AI 出的題目會直接加到下方清單，記得逐題檢查、修改到您滿意再發布。
+        </p>
         {questions.map((q, idx) => (
           <div key={q.id} className="paper" style={{ padding: 18, marginBottom: 14 }}>
             <div className="field">
