@@ -9,6 +9,7 @@ export default function AssignmentEditor() {
   const [saving, setSaving] = useState(false)
   const [summarizing, setSummarizing] = useState(false)
   const [generatingQuestions, setGeneratingQuestions] = useState(false)
+  const [generatingCriteriaId, setGeneratingCriteriaId] = useState(null)
   const [error, setError] = useState('')
   const [savedNote, setSavedNote] = useState('')
 
@@ -140,6 +141,39 @@ export default function AssignmentEditor() {
     if (err) setError(err.message)
   }
 
+  async function generateCriteria(q) {
+    if (!assignment.article_context?.trim()) {
+      setError('請先填寫或自動生成文章摘要，AI 才有依據可以設計評分規準')
+      return
+    }
+    if (!q.prompt?.trim()) {
+      setError('請先填寫題目內容，AI 才知道要針對什麼設計評分規準')
+      return
+    }
+    setGeneratingCriteriaId(q.id)
+    setError('')
+    try {
+      const res = await fetch('/api/generate-criteria', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          article_context: assignment.article_context,
+          title: q.title,
+          prompt: q.prompt,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'AI 產生評分規準失敗')
+      const updated = { ...q, criteria: data.criteria }
+      updateLocalQuestion(q.id, 'criteria', data.criteria)
+      await saveQuestion(updated)
+    } catch (err) {
+      setError(err.message || 'AI 產生評分規準失敗，請稍後再試一次。')
+    } finally {
+      setGeneratingCriteriaId(null)
+    }
+  }
+
   async function removeQuestion(qid) {
     if (!confirm('確定要刪除這一題嗎？')) return
     const { error: err } = await supabase.from('questions').delete().eq('id', qid)
@@ -234,7 +268,22 @@ export default function AssignmentEditor() {
               />
             </div>
             <div className="field">
-              <label>評分規準（僅老師與 AI 看得到，絕不會回傳給學生）</label>
+              <label>
+                評分規準（僅老師與 AI 看得到，絕不會回傳給學生）{' '}
+                <button
+                  type="button"
+                  className="secondary"
+                  style={{ padding: '2px 10px', fontSize: '0.8rem' }}
+                  onClick={() => generateCriteria(q)}
+                  disabled={generatingCriteriaId === q.id}
+                >
+                  {generatingCriteriaId === q.id
+                    ? 'AI 產生中...'
+                    : q.criteria?.trim()
+                      ? '🪄 重新產生'
+                      : '🪄 AI 產生評分規準'}
+                </button>
+              </label>
               <textarea
                 value={q.criteria}
                 onChange={(e) => updateLocalQuestion(q.id, 'criteria', e.target.value)}
