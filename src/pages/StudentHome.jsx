@@ -23,7 +23,7 @@ export default function StudentHome() {
         <span className="home-kicker">閱讀 · 思考 · 表達</span>
         <h1>用自己的話，說出你讀懂了什麼</h1>
         <p className="home-sub">
-          每篇測驗都由你親自作答、AI 提供引導式回饋——答對方向就過關，
+          每篇測驗都由你親自作答，老師會給予引導式回饋——答對方向就過關，
           還沒到位也能不限次數修正，直到真正想清楚為止。
         </p>
       </div>

@@ -81,3 +81,10 @@ create policy "authenticated can delete student records" on student_records
 
 create policy "authenticated can read error logs" on error_logs
   for select using (auth.role() = 'authenticated');
+
+-- 基本資料表權限（RLS 政策生效前，角色本身要先有這些權限）
+grant usage on schema public to anon, authenticated, service_role;
+grant all on all tables in schema public to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
