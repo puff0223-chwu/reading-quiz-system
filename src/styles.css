@@ -54,16 +54,69 @@ h1, h2, h3 {
 .masthead h1 { font-size: 1.9rem; letter-spacing: 0.02em; }
 .masthead p { color: var(--ink-soft); margin: 4px 0 0; font-size: 0.95rem; }
 
-.assignment-list { display: flex; flex-direction: column; gap: 14px; }
+.assignment-list { display: flex; flex-direction: column; gap: 12px; }
 .assignment-card {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 18px;
   padding: 20px 22px;
   text-decoration: none;
   color: var(--ink);
+  transition: background 0.15s ease, transform 0.15s ease;
 }
+.assignment-index {
+  font-family: var(--serif);
+  font-size: 1.4rem;
+  color: var(--rule);
+  font-weight: 700;
+  min-width: 34px;
+}
+.assignment-body { flex: 1; display: flex; flex-direction: column; }
 .assignment-card h3 { font-size: 1.15rem; margin-bottom: 2px; }
 .assignment-card span { color: var(--ink-soft); font-size: 0.9rem; }
-.assignment-card:hover { background: var(--pending-bg); }
+.assignment-arrow { color: var(--rule); font-size: 1.2rem; }
+.assignment-card:hover { background: var(--pending-bg); transform: translateX(2px); }
+.assignment-card:hover .assignment-arrow { color: var(--accent); }
+
+.home-wrap { padding-bottom: 60px; }
+.home-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 28px;
+  max-width: 780px;
+  margin: 0 auto;
+}
+.home-brand { font-family: var(--serif); font-weight: 700; color: var(--ink); }
+.teacher-link {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  border: 1px solid var(--rule);
+  border-radius: 20px;
+  padding: 6px 16px;
+}
+.teacher-link:hover { color: var(--accent); border-color: var(--accent); }
+
+.home-hero {
+  max-width: 620px;
+  margin: 8px auto 40px;
+  padding: 0 24px;
+  text-align: center;
+}
+.home-kicker {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+}
+.home-hero h1 {
+  font-size: 2.1rem;
+  line-height: 1.4;
+  margin-bottom: 14px;
+}
+.home-sub { color: var(--ink-soft); font-size: 0.98rem; margin: 0; }
 
 .empty-note { color: var(--ink-soft); padding: 32px; text-align: center; }
 
