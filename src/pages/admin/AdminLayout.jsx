@@ -32,6 +32,7 @@ export default function AdminLayout() {
           <NavLink to="/admin/records">學生紀錄</NavLink>
           <NavLink to="/admin/import">匯入資料</NavLink>
           <NavLink to="/admin/errors">錯誤紀錄</NavLink>
+          <NavLink to="/admin/appearance">外觀設定</NavLink>
         </nav>
         <button className="ghost" onClick={handleLogout}>登出</button>
       </div>

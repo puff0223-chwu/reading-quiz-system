@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useSettings } from '../lib/settings.jsx'
 
 export default function StudentHome() {
   const [assignments, setAssignments] = useState(null)
   const [error, setError] = useState('')
+  const { settings } = useSettings()
 
   useEffect(() => {
     fetch('/api/assignments')
@@ -12,8 +14,12 @@ export default function StudentHome() {
       .catch(() => setError('目前無法載入作業列表，請稍後再試一次。'))
   }, [])
 
+  const bgStyle = settings.bg_image_url
+    ? { backgroundImage: `url("${settings.bg_image_url}")` }
+    : undefined
+
   return (
-    <div className="home-wrap">
+    <div className={`home-wrap ${settings.bg_image_url ? 'home-bg' : ''}`} style={bgStyle}>
       <div className="home-topbar">
         <span className="home-brand">📖 科普閱讀測驗</span>
         <Link to="/admin/login" className="teacher-link">教師後台</Link>

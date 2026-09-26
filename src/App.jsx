@@ -8,6 +8,7 @@ import AssignmentEditor from './pages/admin/AssignmentEditor.jsx'
 import RecordsPage from './pages/admin/RecordsPage.jsx'
 import ImportPage from './pages/admin/ImportPage.jsx'
 import ErrorsPage from './pages/admin/ErrorsPage.jsx'
+import AppearancePage from './pages/admin/AppearancePage.jsx'
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="records" element={<RecordsPage />} />
         <Route path="import" element={<ImportPage />} />
         <Route path="errors" element={<ErrorsPage />} />
+        <Route path="appearance" element={<AppearancePage />} />
       </Route>
     </Routes>
   )

@@ -50,6 +50,13 @@ create table error_logs (
   created_at timestamptz not null default now()
 );
 
+-- 外觀設定（首頁主題色、背景圖片網址等，key-value 儲存）
+create table settings (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+
 create index idx_student_records_assignment on student_records(assignment_id);
 create index idx_student_records_question on student_records(question_id);
 create index idx_questions_assignment on questions(assignment_id);
@@ -59,6 +66,7 @@ alter table assignments enable row level security;
 alter table questions enable row level security;
 alter table student_records enable row level security;
 alter table error_logs enable row level security;
+alter table settings enable row level security;
 
 create policy "public can read published assignments" on assignments
   for select using (status = 'published');
@@ -81,6 +89,12 @@ create policy "authenticated can delete student records" on student_records
 
 create policy "authenticated can read error logs" on error_logs
   for select using (auth.role() = 'authenticated');
+
+-- settings：所有人（含學生端）可讀，只有登入老師可修改
+create policy "public can read settings" on settings
+  for select using (true);
+create policy "authenticated can manage settings" on settings
+  for all using (auth.role() = 'authenticated');
 
 -- 基本資料表權限（RLS 政策生效前，角色本身要先有這些權限）
 grant usage on schema public to anon, authenticated, service_role;
