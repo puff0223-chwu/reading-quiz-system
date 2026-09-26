@@ -96,6 +96,19 @@ create policy "public can read settings" on settings
 create policy "authenticated can manage settings" on settings
   for all using (auth.role() = 'authenticated');
 
+-- 背景圖片的 Storage bucket
+insert into storage.buckets (id, name, public) values ('backgrounds', 'backgrounds', true)
+  on conflict (id) do nothing;
+
+create policy "public can read backgrounds" on storage.objects
+  for select using (bucket_id = 'backgrounds');
+create policy "authenticated can upload backgrounds" on storage.objects
+  for insert with check (bucket_id = 'backgrounds' and auth.role() = 'authenticated');
+create policy "authenticated can update backgrounds" on storage.objects
+  for update using (bucket_id = 'backgrounds' and auth.role() = 'authenticated');
+create policy "authenticated can delete backgrounds" on storage.objects
+  for delete using (bucket_id = 'backgrounds' and auth.role() = 'authenticated');
+
 -- 基本資料表權限（RLS 政策生效前，角色本身要先有這些權限）
 grant usage on schema public to anon, authenticated, service_role;
 grant all on all tables in schema public to anon, authenticated, service_role;

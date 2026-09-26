@@ -1,11 +1,15 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 
 const STUDENT_INFO_KEY = 'reading-quiz-student-info'
 
+function draftKey(assignmentId, questionId, studentName) {
+  return `reading-quiz-draft:${assignmentId}:${questionId}:${studentName}`
+}
+
 function loadStudentInfo() {
   try {
-    const raw = sessionStorage.getItem(STUDENT_INFO_KEY)
+    const raw = localStorage.getItem(STUDENT_INFO_KEY)
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
@@ -14,6 +18,7 @@ function loadStudentInfo() {
 
 export default function AssignmentPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [studentInfo, setStudentInfo] = useState(loadStudentInfo())
   const [questions, setQuestions] = useState(null)
   const [activeId, setActiveId] = useState(null)
@@ -54,10 +59,31 @@ export default function AssignmentPage() {
     }
   }, [questions, studentInfo, refreshStatus])
 
+  // 切換題目時：清掉上一題的回饋，並讀回這一題先前存在本機的作答草稿（同一台機器、同一個瀏覽器才會恢復）
   useEffect(() => {
     setFeedback(null)
-    setAnswer('')
-  }, [activeId])
+    if (!activeId || !studentInfo) {
+      setAnswer('')
+      return
+    }
+    try {
+      const saved = localStorage.getItem(draftKey(id, activeId, studentInfo.student_name))
+      setAnswer(saved || '')
+    } catch {
+      setAnswer('')
+    }
+  }, [activeId, id, studentInfo])
+
+  function updateAnswer(value) {
+    setAnswer(value)
+    if (activeId && studentInfo) {
+      try {
+        localStorage.setItem(draftKey(id, activeId, studentInfo.student_name), value)
+      } catch {
+        // 本機儲存空間不可用也沒關係，只是沒辦法保留草稿
+      }
+    }
+  }
 
   function handleStudentInfoSubmit(e) {
     e.preventDefault()
@@ -69,12 +95,12 @@ export default function AssignmentPage() {
       seat_number: form.get('seat_number'),
       student_name: form.get('student_name'),
     }
-    sessionStorage.setItem(STUDENT_INFO_KEY, JSON.stringify(info))
+    localStorage.setItem(STUDENT_INFO_KEY, JSON.stringify(info))
     setStudentInfo(info)
   }
 
   function changeInfo() {
-    sessionStorage.removeItem(STUDENT_INFO_KEY)
+    localStorage.removeItem(STUDENT_INFO_KEY)
     setStudentInfo(null)
     setStatusMap({})
   }
@@ -101,6 +127,13 @@ export default function AssignmentPage() {
         ...prev,
         [activeId]: { passed: data.passed, attempts: data.attempt_number },
       }))
+      if (data.passed) {
+        try {
+          localStorage.removeItem(draftKey(id, activeId, studentInfo.student_name))
+        } catch {
+          // ignore
+        }
+      }
     } catch (err) {
       setFeedback({ error: '系統目前比較忙碌，請稍等一下再重新提交一次看看。' })
     } finally {
@@ -122,17 +155,18 @@ export default function AssignmentPage() {
     return (
       <div className="page">
         <div className="paper">
-          <div className="masthead">
+          <div className="masthead" style={{ position: 'relative' }}>
+            <Link to="/" className="exit-x" aria-label="返回首頁">✕</Link>
             <h1>作答前，請先填寫資料</h1>
+            <p>不用急著馬上寫完，資料存好後可以隨時離開，回來會接續之前的進度</p>
           </div>
           <form className="section" onSubmit={handleStudentInfoSubmit}>
             <div className="row">
               <div className="field">
                 <label>用途</label>
                 <select name="purpose" required>
-                  <option value="進度學習">進度學習</option>
-                  <option value="考試複習">考試複習</option>
-                  <option value="重補修">重補修</option>
+                  <option value="進度繳交">進度繳交</option>
+                  <option value="補繳">補繳</option>
                 </select>
               </div>
               <div className="field">
@@ -172,7 +206,16 @@ export default function AssignmentPage() {
   return (
     <div className="page">
       <div className="paper">
-        <div className="masthead" style={{ paddingBottom: 16 }}>
+        <div className="masthead" style={{ paddingBottom: 16, position: 'relative' }}>
+          <button
+            type="button"
+            className="exit-x"
+            onClick={() => navigate('/')}
+            aria-label="離開測驗，回到首頁"
+            title="離開測驗（進度會自動保留，之後可以接續作答）"
+          >
+            ✕
+          </button>
           <h1>科普閱讀測驗</h1>
           <p>
             {studentInfo.grade} {studentInfo.class_name} {studentInfo.seat_number}號 {studentInfo.student_name}
@@ -213,7 +256,7 @@ export default function AssignmentPage() {
               <label>你的回答</label>
               <textarea
                 value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
+                onChange={(e) => updateAnswer(e.target.value)}
                 placeholder="請用自己的話回答，盡量說明完整一點"
               />
             </div>
@@ -231,6 +274,10 @@ export default function AssignmentPage() {
                 <p style={{ margin: '6px 0 0' }}>{feedback.feedback}</p>
               </div>
             )}
+
+            <p className="muted" style={{ marginTop: 20, fontSize: '0.85rem' }}>
+              寫到一半也可以先離開，你的內容會自動保留在這台裝置上，下次用同一台電腦、同一個瀏覽器打開就能接續。
+            </p>
           </div>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabaseClient.js'
 
 export default function AdminLayout() {
@@ -34,7 +34,12 @@ export default function AdminLayout() {
           <NavLink to="/admin/errors">錯誤紀錄</NavLink>
           <NavLink to="/admin/appearance">外觀設定</NavLink>
         </nav>
-        <button className="ghost" onClick={handleLogout}>登出</button>
+        <div>
+          <Link to="/" target="_blank" className="teacher-link" style={{ marginRight: 10 }}>
+            前往測驗首頁 ↗
+          </Link>
+          <button className="ghost" onClick={handleLogout}>登出</button>
+        </div>
       </div>
       <div className="page">
         <Outlet />

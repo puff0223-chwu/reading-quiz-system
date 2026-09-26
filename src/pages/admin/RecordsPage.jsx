@@ -8,6 +8,7 @@ export default function RecordsPage() {
   const [filterAssignment, setFilterAssignment] = useState('')
   const [filterClass, setFilterClass] = useState('')
   const [filterName, setFilterName] = useState('')
+  const [filterResult, setFilterResult] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -32,6 +33,8 @@ export default function RecordsPage() {
   const filtered = records.filter((r) => {
     if (filterClass && !r.class_name?.includes(filterClass)) return false
     if (filterName && !r.student_name?.includes(filterName)) return false
+    if (filterResult === 'passed' && !r.passed) return false
+    if (filterResult === 'failed' && r.passed) return false
     return true
   })
 
@@ -68,6 +71,11 @@ export default function RecordsPage() {
         </select>
         <input type="text" placeholder="篩選班級" value={filterClass} onChange={(e) => setFilterClass(e.target.value)} />
         <input type="text" placeholder="篩選姓名" value={filterName} onChange={(e) => setFilterName(e.target.value)} />
+        <select value={filterResult} onChange={(e) => setFilterResult(e.target.value)}>
+          <option value="">所有結果</option>
+          <option value="passed">✅ 過關</option>
+          <option value="failed">未過關</option>
+        </select>
         <button className="secondary" onClick={exportExcel}>匯出 Excel</button>
       </div>
       {error && <p className="error-text">{error}</p>}
