@@ -2,12 +2,17 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../supabaseClient.js'
 import * as XLSX from 'xlsx'
 
+const PAGE_SIZE = 30
+
 export default function RecordsPage() {
   const [assignments, setAssignments] = useState([])
   const [records, setRecords] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(1)
   const [selected, setSelected] = useState(new Set())
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
 
   const [filterAssignment, setFilterAssignment] = useState('')
   const [filterPurpose, setFilterPurpose] = useState('')
@@ -28,35 +33,55 @@ export default function RecordsPage() {
   }, [])
 
   useEffect(() => {
-    load()
+    load(page)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterAssignment, dateFrom, dateTo])
+  }, [page, filterAssignment, filterPurpose, filterGrade, filterClass, filterName, filterResult, dateFrom, dateTo])
 
-  async function load() {
+  // 統一套用所有篩選條件到同一個 query 上（列表載入、匯出都會用到，避免兩邊邏輯兜不起來）
+  function applyFilters(query) {
+    let q = query
+    if (filterAssignment) q = q.eq('assignment_id', filterAssignment)
+    if (filterPurpose) q = q.eq('purpose', filterPurpose)
+    if (filterGrade) q = q.eq('grade', filterGrade)
+    if (filterClass) q = q.ilike('class_name', `%${filterClass}%`)
+    if (filterName) q = q.ilike('student_name', `%${filterName}%`)
+    if (filterResult === 'passed') q = q.eq('passed', true)
+    if (filterResult === 'failed') q = q.eq('passed', false)
+    if (dateFrom) q = q.gte('created_at', `${dateFrom}T00:00:00`)
+    if (dateTo) q = q.lte('created_at', `${dateTo}T23:59:59`)
+    return q
+  }
+
+  async function load(pageArg) {
     setLoading(true)
+    setError('')
     let query = supabase
       .from('student_records')
-      .select('*, questions(title, order_index), assignments(title)')
+      .select('*, questions(title, order_index), assignments(title)', { count: 'exact' })
       .order('created_at', { ascending: false })
-    if (filterAssignment) query = query.eq('assignment_id', filterAssignment)
-    if (dateFrom) query = query.gte('created_at', `${dateFrom}T00:00:00`)
-    if (dateTo) query = query.lte('created_at', `${dateTo}T23:59:59`)
-    const { data, error: err } = await query
-    if (err) setError(err.message)
-    else setRecords(data || [])
+    query = applyFilters(query)
+
+    const from = (pageArg - 1) * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+    query = query.range(from, to)
+
+    const { data, error: err, count } = await query
+    if (err) {
+      setError(err.message)
+    } else {
+      setRecords(data || [])
+      setTotalCount(count || 0)
+    }
     setSelected(new Set())
     setLoading(false)
   }
 
-  const filtered = records.filter((r) => {
-    if (filterPurpose && r.purpose !== filterPurpose) return false
-    if (filterGrade && r.grade !== filterGrade) return false
-    if (filterClass && !r.class_name?.includes(filterClass)) return false
-    if (filterName && !r.student_name?.includes(filterName)) return false
-    if (filterResult === 'passed' && !r.passed) return false
-    if (filterResult === 'failed' && r.passed) return false
-    return true
-  })
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+
+  function updateFilter(setter, value) {
+    setter(value)
+    setPage(1) // 篩選條件一變，回到第一頁，避免留在一個可能已經沒有資料的頁碼
+  }
 
   function resetFilters() {
     setFilterAssignment('')
@@ -67,6 +92,7 @@ export default function RecordsPage() {
     setFilterResult('')
     setDateFrom('')
     setDateTo('')
+    setPage(1)
   }
 
   function toggleSelect(id) {
@@ -79,15 +105,15 @@ export default function RecordsPage() {
   }
 
   function toggleSelectAll() {
-    if (selected.size === filtered.length) setSelected(new Set())
-    else setSelected(new Set(filtered.map((r) => r.id)))
+    if (selected.size === records.length) setSelected(new Set())
+    else setSelected(new Set(records.map((r) => r.id)))
   }
 
   async function deleteOne(id) {
     if (!confirm('確定要刪除這一筆紀錄嗎？此動作無法復原。')) return
     const { error: err } = await supabase.from('student_records').delete().eq('id', id)
     if (err) setError(err.message)
-    else load()
+    else load(page)
   }
 
   async function deleteSelected() {
@@ -95,7 +121,7 @@ export default function RecordsPage() {
     if (!confirm(`確定要刪除這 ${selected.size} 筆紀錄嗎？此動作無法復原。`)) return
     const { error: err } = await supabase.from('student_records').delete().in('id', [...selected])
     if (err) setError(err.message)
-    else load()
+    else load(page)
   }
 
   async function batchDeleteByDate() {
@@ -123,7 +149,8 @@ export default function RecordsPage() {
       const { error: err } = await query
       if (err) throw err
       setBatchNote('已刪除完成')
-      load()
+      setPage(1)
+      load(1)
     } catch (err) {
       setBatchNote(`刪除失敗：${err.message}`)
     } finally {
@@ -131,25 +158,43 @@ export default function RecordsPage() {
     }
   }
 
-  function exportExcel() {
-    const rows = filtered.map((r) => ({
-      作業: r.assignments?.title,
-      題目: r.questions?.title,
-      用途: r.purpose,
-      年級: r.grade,
-      班級: r.class_name,
-      座號: r.seat_number,
-      姓名: r.student_name,
-      嘗試次數: r.attempt_number,
-      作答內容: r.answer_text,
-      是否過關: r.passed ? '過關' : '未過關',
-      老師回饋: r.ai_feedback,
-      時間: new Date(r.created_at).toLocaleString('zh-TW'),
-    }))
-    const ws = XLSX.utils.json_to_sheet(rows)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, '學生紀錄')
-    XLSX.writeFile(wb, `學生紀錄_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  async function exportExcel() {
+    setExporting(true)
+    setError('')
+    try {
+      // 匯出要包含「目前篩選條件下的全部資料」，不能只匯出畫面上這一頁，所以這裡不加 range 分頁限制
+      let query = supabase
+        .from('student_records')
+        .select('*, questions(title, order_index), assignments(title)')
+        .order('created_at', { ascending: false })
+      query = applyFilters(query).range(0, 9999)
+
+      const { data, error: err } = await query
+      if (err) throw err
+
+      const rows = (data || []).map((r) => ({
+        作業: r.assignments?.title,
+        題目: r.questions?.title,
+        用途: r.purpose,
+        年級: r.grade,
+        班級: r.class_name,
+        座號: r.seat_number,
+        姓名: r.student_name,
+        嘗試次數: r.attempt_number,
+        作答內容: r.answer_text,
+        是否過關: r.passed ? '過關' : '未過關',
+        老師回饋: r.ai_feedback,
+        時間: new Date(r.created_at).toLocaleString('zh-TW'),
+      }))
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, '學生紀錄')
+      XLSX.writeFile(wb, `學生紀錄_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    } catch (err) {
+      setError(err.message || '匯出失敗，請稍後再試一次。')
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -159,7 +204,7 @@ export default function RecordsPage() {
       <div className="filter-grid">
         <div className="field">
           <label>作業</label>
-          <select value={filterAssignment} onChange={(e) => setFilterAssignment(e.target.value)}>
+          <select value={filterAssignment} onChange={(e) => updateFilter(setFilterAssignment, e.target.value)}>
             <option value="">所有作業</option>
             {assignments.map((a) => (
               <option key={a.id} value={a.id}>{a.title}</option>
@@ -168,7 +213,7 @@ export default function RecordsPage() {
         </div>
         <div className="field">
           <label>用途</label>
-          <select value={filterPurpose} onChange={(e) => setFilterPurpose(e.target.value)}>
+          <select value={filterPurpose} onChange={(e) => updateFilter(setFilterPurpose, e.target.value)}>
             <option value="">所有用途</option>
             <option value="進度繳交">進度繳交</option>
             <option value="補繳">補繳</option>
@@ -176,7 +221,7 @@ export default function RecordsPage() {
         </div>
         <div className="field">
           <label>年級</label>
-          <select value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)}>
+          <select value={filterGrade} onChange={(e) => updateFilter(setFilterGrade, e.target.value)}>
             <option value="">所有年級</option>
             <option value="國中">國中</option>
             <option value="高一">高一</option>
@@ -186,15 +231,15 @@ export default function RecordsPage() {
         </div>
         <div className="field">
           <label>班級</label>
-          <input type="text" value={filterClass} onChange={(e) => setFilterClass(e.target.value)} placeholder="例如：高二忠" />
+          <input type="text" value={filterClass} onChange={(e) => updateFilter(setFilterClass, e.target.value)} placeholder="例如：高二忠" />
         </div>
         <div className="field">
           <label>姓名</label>
-          <input type="text" value={filterName} onChange={(e) => setFilterName(e.target.value)} placeholder="輸入姓名關鍵字" />
+          <input type="text" value={filterName} onChange={(e) => updateFilter(setFilterName, e.target.value)} placeholder="輸入姓名關鍵字" />
         </div>
         <div className="field">
           <label>作答結果</label>
-          <select value={filterResult} onChange={(e) => setFilterResult(e.target.value)}>
+          <select value={filterResult} onChange={(e) => updateFilter(setFilterResult, e.target.value)}>
             <option value="">所有結果</option>
             <option value="passed">✅ 過關</option>
             <option value="failed">未過關</option>
@@ -202,19 +247,24 @@ export default function RecordsPage() {
         </div>
         <div className="field">
           <label>作答日期（起）</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <input type="date" value={dateFrom} onChange={(e) => updateFilter(setDateFrom, e.target.value)} />
         </div>
         <div className="field">
           <label>作答日期（迄）</label>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <input type="date" value={dateTo} onChange={(e) => updateFilter(setDateTo, e.target.value)} />
         </div>
       </div>
-      <div style={{ marginBottom: 20 }}>
-        <button className="ghost" onClick={resetFilters}>清除篩選</button>{' '}
-        <button className="secondary" onClick={exportExcel}>匯出 Excel（依目前篩選）</button>{' '}
-        <button className="danger" onClick={deleteSelected} disabled={selected.size === 0}>
-          刪除所選（{selected.size}）
-        </button>
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <button className="ghost" onClick={resetFilters}>清除篩選</button>{' '}
+          <button className="secondary" onClick={exportExcel} disabled={exporting}>
+            {exporting ? '匯出中...' : '匯出 Excel（依目前篩選，含所有頁）'}
+          </button>{' '}
+          <button className="danger" onClick={deleteSelected} disabled={selected.size === 0}>
+            刪除所選（{selected.size}）
+          </button>
+        </div>
+        <span className="muted" style={{ fontSize: '0.9rem' }}>符合條件共 {totalCount} 筆</span>
       </div>
 
       {error && <p className="error-text">{error}</p>}
@@ -227,7 +277,7 @@ export default function RecordsPage() {
               <th style={{ width: 30 }}>
                 <input
                   type="checkbox"
-                  checked={filtered.length > 0 && selected.size === filtered.length}
+                  checked={records.length > 0 && selected.size === records.length}
                   onChange={toggleSelectAll}
                 />
               </th>
@@ -243,7 +293,7 @@ export default function RecordsPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
+            {records.map((r) => (
               <tr key={r.id}>
                 <td><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
                 <td>{r.assignments?.title}</td>
@@ -260,7 +310,15 @@ export default function RecordsPage() {
           </tbody>
         </table>
       )}
-      {!loading && filtered.length === 0 && <p className="empty-note">沒有符合條件的紀錄</p>}
+      {!loading && records.length === 0 && <p className="empty-note">沒有符合條件的紀錄</p>}
+
+      {!loading && totalCount > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, margin: '20px 0' }}>
+          <button className="secondary" onClick={() => setPage(page - 1)} disabled={page <= 1}>← 上一頁</button>
+          <span className="muted">第 {page} / {totalPages} 頁</span>
+          <button className="secondary" onClick={() => setPage(page + 1)} disabled={page >= totalPages}>下一頁 →</button>
+        </div>
+      )}
 
       <div className="paper" style={{ marginTop: 28, padding: 20 }}>
         <h3 style={{ fontSize: '1rem', marginTop: 0 }}>批次刪除（依作答日期區間）</h3>
