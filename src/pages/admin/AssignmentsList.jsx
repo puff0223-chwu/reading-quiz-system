@@ -5,20 +5,21 @@ import { supabase } from '../../supabaseClient.js'
 export default function AssignmentsList() {
   const [assignments, setAssignments] = useState(null)
   const [error, setError] = useState('')
+  const [sortAsc, setSortAsc] = useState(false) // 預設由新到舊
   const navigate = useNavigate()
 
-  async function load() {
+  async function load(ascending = sortAsc) {
     const { data, error: err } = await supabase
       .from('assignments')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('seq_no', { ascending })
     if (err) setError(err.message)
     else setAssignments(data)
   }
 
   useEffect(() => {
-    load()
-  }, [])
+    load(sortAsc)
+  }, [sortAsc])
 
   async function createNew() {
     const { data, error: err } = await supabase
@@ -55,12 +56,20 @@ export default function AssignmentsList() {
       </div>
       <div className="section">
         {error && <p className="error-text">{error}</p>}
+        {assignments && assignments.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <button className="secondary" onClick={() => setSortAsc(!sortAsc)}>
+              {sortAsc ? '目前：編號 舊 → 新' : '目前：編號 新 → 舊'}（點擊切換）
+            </button>
+          </div>
+        )}
         {!assignments && <p className="empty-note">載入中...</p>}
         {assignments && assignments.length === 0 && <p className="empty-note">還沒有任何作業，點右上角新增一個吧。</p>}
         {assignments && assignments.length > 0 && (
           <table className="data-table">
             <thead>
               <tr>
+                <th>編號</th>
                 <th>標題</th>
                 <th>狀態</th>
                 <th>建立時間</th>
@@ -70,6 +79,7 @@ export default function AssignmentsList() {
             <tbody>
               {assignments.map((a) => (
                 <tr key={a.id}>
+                  <td className="muted">{a.seq_no}</td>
                   <td><Link to={`/admin/assignments/${a.id}`}>{a.title}</Link></td>
                   <td>
                     <span className={`status-pill ${a.status}`}>

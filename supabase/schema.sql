@@ -122,9 +122,27 @@ create policy "authenticated can read ai usage" on ai_usage_logs
 create policy "service role can insert ai usage" on ai_usage_logs
   for insert with check (true);
 
+-- 作業編號（依建立時間自動編號，編號永久不變，只有顯示排序可以調整）
+create sequence if not exists assignments_seq_no_seq;
+alter table assignments add column if not exists seq_no bigint default nextval('assignments_seq_no_seq');
+
+-- 回填既有資料的編號（依建立時間由舊到新編號）
+with ordered as (
+  select id, row_number() over (order by created_at asc) as rn
+  from assignments
+)
+update assignments a set seq_no = ordered.rn
+from ordered
+where a.id = ordered.id and a.seq_no is null;
+
+select setval('assignments_seq_no_seq', (select coalesce(max(seq_no), 0) from assignments));
+alter table assignments alter column seq_no set not null;
+create unique index if not exists assignments_seq_no_idx on assignments (seq_no);
+
 -- 基本資料表權限（RLS 政策生效前，角色本身要先有這些權限）
 grant usage on schema public to anon, authenticated, service_role;
 grant all on all tables in schema public to anon, authenticated, service_role;
 grant all on all sequences in schema public to anon, authenticated, service_role;
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+grant all on assignments_seq_no_seq to anon, authenticated, service_role;
