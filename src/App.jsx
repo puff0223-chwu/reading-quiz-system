@@ -9,6 +9,7 @@ import RecordsPage from './pages/admin/RecordsPage.jsx'
 import ImportPage from './pages/admin/ImportPage.jsx'
 import ErrorsPage from './pages/admin/ErrorsPage.jsx'
 import AppearancePage from './pages/admin/AppearancePage.jsx'
+import AiUsagePage from './pages/admin/AiUsagePage.jsx'
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="import" element={<ImportPage />} />
         <Route path="errors" element={<ErrorsPage />} />
         <Route path="appearance" element={<AppearancePage />} />
+        <Route path="ai-usage" element={<AiUsagePage />} />
       </Route>
     </Routes>
   )

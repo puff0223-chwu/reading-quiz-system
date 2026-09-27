@@ -109,6 +109,19 @@ create policy "authenticated can update backgrounds" on storage.objects
 create policy "authenticated can delete backgrounds" on storage.objects
   for delete using (bucket_id = 'backgrounds' and auth.role() = 'authenticated');
 
+-- AI 呼叫次數統計（僅供後台粗略統計用量趨勢，不是精確費用計算）
+create table if not exists ai_usage_logs (
+  id uuid primary key default gen_random_uuid(),
+  endpoint text not null,
+  created_at timestamptz not null default now()
+);
+alter table ai_usage_logs enable row level security;
+
+create policy "authenticated can read ai usage" on ai_usage_logs
+  for select using (auth.role() = 'authenticated');
+create policy "service role can insert ai usage" on ai_usage_logs
+  for insert with check (true);
+
 -- 基本資料表權限（RLS 政策生效前，角色本身要先有這些權限）
 grant usage on schema public to anon, authenticated, service_role;
 grant all on all tables in schema public to anon, authenticated, service_role;

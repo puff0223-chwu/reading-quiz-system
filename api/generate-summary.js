@@ -1,3 +1,6 @@
+import { getSupabaseAdmin } from './_supabaseAdmin.js'
+import { logAiUsage } from './_usageLog.js'
+
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest'
 
 export default async function handler(req, res) {
@@ -44,6 +47,7 @@ ${articleText}
     const data = await geminiRes.json()
     const summary = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ''
     if (!summary) throw new Error('empty summary')
+    await logAiUsage(getSupabaseAdmin(), 'generate-summary')
     return res.status(200).json({ summary })
   } catch (err) {
     return res.status(500).json({ error: '生成摘要失敗，請稍後再試，或手動輸入摘要。' })

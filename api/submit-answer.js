@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from './_supabaseAdmin.js'
+import { logAiUsage } from './_usageLog.js'
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest'
 const MAX_RETRIES = 4
@@ -106,6 +107,7 @@ export default async function handler(req, res) {
   let gradeResult
   try {
     gradeResult = await callGemini(buildPrompt(assignment.article_context, question, answer_text))
+    await logAiUsage(supabase, 'submit-answer')
   } catch (err) {
     await supabase.from('error_logs').insert({
       assignment_id,

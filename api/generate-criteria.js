@@ -1,3 +1,6 @@
+import { getSupabaseAdmin } from './_supabaseAdmin.js'
+import { logAiUsage } from './_usageLog.js'
+
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest'
 
 export default async function handler(req, res) {
@@ -40,6 +43,7 @@ ${questionPrompt}
     const data = await geminiRes.json()
     const criteria = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ''
     if (!criteria) throw new Error('empty')
+    await logAiUsage(getSupabaseAdmin(), 'generate-criteria')
     return res.status(200).json({ criteria })
   } catch (err) {
     return res.status(500).json({ error: 'AI 產生評分規準失敗，請稍後再試一次。' })

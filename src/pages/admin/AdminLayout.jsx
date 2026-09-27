@@ -33,6 +33,7 @@ export default function AdminLayout() {
           <NavLink to="/admin/import">匯入資料</NavLink>
           <NavLink to="/admin/errors">錯誤紀錄</NavLink>
           <NavLink to="/admin/appearance">外觀設定</NavLink>
+          <NavLink to="/admin/ai-usage">AI 用量</NavLink>
         </nav>
         <div>
           <Link to="/" target="_blank" className="teacher-link" style={{ marginRight: 10 }}>

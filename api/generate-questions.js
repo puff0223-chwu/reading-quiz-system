@@ -1,3 +1,6 @@
+import { getSupabaseAdmin } from './_supabaseAdmin.js'
+import { logAiUsage } from './_usageLog.js'
+
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest'
 
 export default async function handler(req, res) {
@@ -41,6 +44,7 @@ ${article_context}
     const cleaned = text.replace(/```json|```/g, '').trim()
     const questions = JSON.parse(cleaned)
     if (!Array.isArray(questions) || questions.length === 0) throw new Error('empty')
+    await logAiUsage(getSupabaseAdmin(), 'generate-questions')
     return res.status(200).json({ questions })
   } catch (err) {
     return res.status(500).json({ error: 'AI 出題失敗，請稍後再試一次，或手動新增題目。' })
