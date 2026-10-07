@@ -10,7 +10,18 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: '請先填寫文章摘要與題目內容，AI 才能設計評分規準' })
   }
 
-  const prompt = `你是一位很會設計評分規準的高中老師。以下是一篇科普文章的摘要，以及老師自己出的一道簡答題，請你幫這一題設計「評分規準」。
+  // 「重新產生」要能給出不一樣的結果。以前是靠調高 temperature 參數讓 AI 隨機一點，
+  // 但 Gemini 之後的新模型會讓這種參數直接噴錯，所以改用「每次換一個角度切入」的提示詞來製造變化。
+  const angles = [
+    '這次請特別著重「學生要能具體指出文章中的哪些關鍵資訊」這個角度來寫規準',
+    '這次請特別著重「學生的推理或因果邏輯要說得通」這個角度來寫規準',
+    '這次請用比較精簡扼要的方式來寫規準，抓最核心的 1-2 個重點就好',
+    '這次請用比較完整涵蓋多個面向的方式來寫規準，盡量把不同可能的切入點都考慮進去',
+    '這次請特別著重「用詞是否精準、是否有誤解文章內容」這個角度來寫規準',
+  ]
+  const angle = angles[Math.floor(Math.random() * angles.length)]
+
+  const prompt = `你是一位很會設計評分規準的高中老師。以下是一篇科普文章的摘要，以及老師自己出的一道簡答題，請你幫這一題設計「評分規準」。${angle}。
 
 【文章摘要】
 ${article_context}
@@ -36,7 +47,6 @@ ${questionPrompt}
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.8 },
       }),
     })
     if (!geminiRes.ok) throw new Error(`HTTP ${geminiRes.status}`)

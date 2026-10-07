@@ -35,7 +35,6 @@ ${article_context}
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.6 },
       }),
     })
     if (!geminiRes.ok) throw new Error(`HTTP ${geminiRes.status}`)
