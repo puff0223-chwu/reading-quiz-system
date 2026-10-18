@@ -18,7 +18,7 @@ export default function AiUsagePage() {
     <div className="paper section">
       <h2>AI 用量統計</h2>
       <p className="muted" style={{ marginTop: -8 }}>
-        這裡統計的是系統呼叫 AI（批改回饋、自動摘要、AI 出題、AI 產生評分規準）的「次數」，
+        這裡統計的是系統呼叫 AI（批改回饋、自動摘要、AI 出題、AI 產生評分規準，以及巫魚子教課事務所「出處失傳的秘文」的改寫回饋）的「次數」，
         方便您大致掌握使用量的成長趨勢。這不是即時的費用或餘額，實際花費請以 Google AI Studio /
         Google Cloud 帳單為準。
       </p>
@@ -39,6 +39,12 @@ export default function AiUsagePage() {
             <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>累計總呼叫次數</p>
             <p style={{ fontFamily: 'var(--serif)', fontSize: '2.2rem', margin: '6px 0 0' }}>
               {usage.total_count}
+            </p>
+          </div>
+          <div className="paper" style={{ padding: '22px 26px' }}>
+            <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>其中「出處失傳的秘文」本月次數</p>
+            <p style={{ fontFamily: 'var(--serif)', fontSize: '2.2rem', margin: '6px 0 0' }}>
+              {usage.src_month_count || 0}
             </p>
           </div>
         </div>

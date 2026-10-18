@@ -17,6 +17,13 @@ export default async function handler(req, res) {
     .from('ai_usage_logs')
     .select('id', { count: 'exact', head: true })
 
+  // 其中借給「出處失傳的秘文」（巫魚子教課事務所）用的次數（2026-10-19）
+  const { count: srcMonth } = await supabase
+    .from('ai_usage_logs')
+    .select('id', { count: 'exact', head: true })
+    .like('endpoint', 'src-%')
+    .gte('created_at', monthStart)
+
   if (monthErr || totalErr) {
     return res.status(500).json({ error: (monthErr || totalErr).message })
   }
@@ -24,6 +31,7 @@ export default async function handler(req, res) {
   return res.status(200).json({
     month_count: monthCount || 0,
     total_count: totalCount || 0,
+    src_month_count: srcMonth || 0,
     month_label: `${now.getFullYear()} 年 ${now.getMonth() + 1} 月`,
   })
 }
