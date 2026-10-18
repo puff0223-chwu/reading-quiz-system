@@ -95,7 +95,20 @@ async function callGemini(prompt) {
 export default async function handler(req, res) {
   cors(req, res)
   if (req.method === 'OPTIONS') return res.status(204).end()
-  if (req.method === 'GET') return res.status(200).json({ ok: true, service: 'src-feedback' }) // 健康檢查
+  if (req.method === 'GET') {
+    // GET ?usage=任務代碼：給教課事務所老師頁看 AI 用量（只有次數，沒有學生資料）
+    const code = String((req.query && req.query.usage) || '').toUpperCase()
+    if (!/^[A-HJ-NP-Z2-9]{6}$/.test(code)) return res.status(200).json({ ok: true, service: 'src-feedback' }) // 健康檢查
+    const supabase = getSupabaseAdmin()
+    const now = new Date(), monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+    const q = (pattern, since) => { let x = supabase.from('ai_usage_logs').select('id', { count: 'exact', head: true }).like('endpoint', pattern); if (since) x = x.gte('created_at', since); return x }
+    try {
+      const [a, b, c, d, e] = await Promise.all([q(`src-%:${code}`, monthStart), q(`src-%:${code}`), q('src-%', monthStart), q('src-%'), supabase.from('ai_usage_logs').select('id', { count: 'exact', head: true }).gte('created_at', monthStart)])
+      return res.status(200).json({ month_label: `${now.getFullYear()} 年 ${now.getMonth() + 1} 月`, mission_month: a.count || 0, mission_total: b.count || 0, src_month: c.count || 0, src_total: d.count || 0, all_month: e.count || 0 })
+    } catch (err) {
+      return res.status(200).json({ error: '暫時讀不到用量' })
+    }
+  }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   const origin = req.headers.origin || ''
   if (origin && !ORIGINS.includes(origin) && !/^http:\/\/localhost(:\d+)?$/.test(origin)) return res.status(403).json({ error: 'forbidden' })
