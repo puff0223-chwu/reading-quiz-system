@@ -140,6 +140,13 @@ alter table assignments alter column seq_no set not null;
 create unique index if not exists assignments_seq_no_idx on assignments (seq_no);
 
 -- 基本資料表權限（RLS 政策生效前，角色本身要先有這些權限）
+-- ⚠️ 2026-10-30 起 Supabase 不再自動授權新建的 public 資料表給 Data API。
+--    現有資料表不受影響；但之後「新增任何資料表」，要在建表的同一段 SQL 後面自己加 grant，
+--    否則 supabase-js 會出現 "permission denied for table xxx"。範本：
+--      grant select on public.新表 to anon;                                      -- 只有需要未登入者讀取才加
+--      grant select, insert, update, delete on public.新表 to authenticated;
+--      grant select, insert, update, delete on public.新表 to service_role;
+--    （下面這段「全部授權」在整份檔案重跑時仍可運作；資料安全靠 RLS 擋，不是靠授權。）
 grant usage on schema public to anon, authenticated, service_role;
 grant all on all tables in schema public to anon, authenticated, service_role;
 grant all on all sequences in schema public to anon, authenticated, service_role;
