@@ -6,6 +6,7 @@ export default function AssignmentsList() {
   const [assignments, setAssignments] = useState(null)
   const [error, setError] = useState('')
   const [sortAsc, setSortAsc] = useState(false) // 預設由新到舊
+  const [editingId, setEditingId] = useState(null)
   const navigate = useNavigate()
 
   async function load(ascending = sortAsc) {
@@ -41,6 +42,16 @@ export default function AssignmentsList() {
     else load()
   }
 
+  // 老師手動改編號：把這份作業移到指定位置，其他作業自動順移
+  async function changeNo(a, value) {
+    const n = parseInt(value, 10)
+    setEditingId(null)
+    if (!Number.isFinite(n) || n < 1 || n === a.seq_no) return
+    const { error: err } = await supabase.rpc('move_assignment', { p_id: a.id, p_new_no: n })
+    if (err) setError(err.message)
+    else load()
+  }
+
   async function remove(a) {
     if (!confirm(`確定要刪除「${a.title}」嗎？此動作無法復原，底下所有題目與學生紀錄也會一併刪除。`)) return
     const { error: err } = await supabase.from('assignments').delete().eq('id', a.id)
@@ -58,6 +69,9 @@ export default function AssignmentsList() {
         {error && <p className="error-text">{error}</p>}
         {assignments && assignments.length > 0 && (
           <div style={{ marginBottom: 14 }}>
+            <p className="muted" style={{ margin: '0 0 8px' }}>
+              新增的作業會自動排在最後；刪除後編號會自動遞補。點編號可以改成想要的位置，其他作業會自動順移。
+            </p>
             <button className="secondary" onClick={() => setSortAsc(!sortAsc)}>
               {sortAsc ? '目前：編號 舊 → 新' : '目前：編號 新 → 舊'}（點擊切換）
             </button>
@@ -79,7 +93,32 @@ export default function AssignmentsList() {
             <tbody>
               {assignments.map((a) => (
                 <tr key={a.id}>
-                  <td className="muted">{a.seq_no}</td>
+                  <td className="muted">
+                    {editingId === a.id ? (
+                      <input
+                        type="number"
+                        min="1"
+                        max={assignments.length}
+                        defaultValue={a.seq_no}
+                        autoFocus
+                        style={{ width: 64 }}
+                        onBlur={(e) => changeNo(a, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.target.blur()
+                          if (e.key === 'Escape') setEditingId(null)
+                        }}
+                      />
+                    ) : (
+                      <button
+                        className="secondary"
+                        title="點一下可以修改編號（會移到該位置，其他作業自動順移）"
+                        onClick={() => setEditingId(a.id)}
+                        style={{ minWidth: 40, padding: '2px 10px' }}
+                      >
+                        {a.seq_no}
+                      </button>
+                    )}
+                  </td>
                   <td><Link to={`/admin/assignments/${a.id}`}>{a.title}</Link></td>
                   <td>
                     <span className={`status-pill ${a.status}`}>
