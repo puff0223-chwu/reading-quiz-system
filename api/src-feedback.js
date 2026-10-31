@@ -145,7 +145,8 @@ export default async function handler(req, res) {
     await logAiUsage(supabase, tag)
     return res.status(200).json(out)
   } catch (err) {
-    try { await supabase.from('error_logs').insert({ student_name: `[src ${code}] ${sid}`, error_detail: String(err.message || err).slice(0, 1000) }) } catch (e) { }
+    try { await supabase.from('error_logs').insert({ student_name: `[src ${code}] ${sid}`, error_detail: ((/^HTTP 402/.test(String(err.message || ''))) ? '【AI 額度用完，請到 AI Studio 儲值】' : '') + String(err.message || err).slice(0, 1000) }) } catch (e) { }
+    if (/^HTTP 402/.test(String(err.message || ''))) return res.status(200).json({ error: '老師的 AI 批改額度暫時用完，請通知老師。' })
     return res.status(200).json({ error: 'AI 老師目前比較忙碌，請稍等一下再送出一次。' })
   }
 }

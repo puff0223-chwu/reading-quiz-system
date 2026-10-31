@@ -108,14 +108,18 @@ export default async function handler(req, res) {
     gradeResult = await callGemini(buildPrompt(assignment.article_context, question, answer_text))
     await logAiUsage(supabase, 'submit-answer')
   } catch (err) {
+    // HTTP 402＝Gemini 預付額度用完：要讓學生知道是額度問題（不是忙碌），老師也能在錯誤紀錄一眼看到
+    const quotaOut = /^HTTP 402/.test(String(err.message || ''))
     await supabase.from('error_logs').insert({
       assignment_id,
       question_id,
       student_name,
-      error_detail: String(err.message || err),
+      error_detail: (quotaOut ? '【AI 額度用完，請到 AI Studio 儲值】' : '') + String(err.message || err),
     })
     return res.status(200).json({
-      error: '系統目前比較忙碌，請稍等一下再重新提交一次看看。',
+      error: quotaOut
+        ? '老師的 AI 批改額度暫時用完，請通知老師。'
+        : '系統目前比較忙碌，請稍等一下再重新提交一次看看。',
     })
   }
 
